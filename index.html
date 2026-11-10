@@ -2236,6 +2236,12 @@ function doSearch(event) {
   if (event) event.preventDefault();
   const query = document.getElementById('search-input').value.trim();
   if (!query) { navigate('/'); return; }
+  // GA4 권장 이벤트 search — 상단 검색창에서 사용자가 검색을 제출했을 때 (빈 검색어 제외)
+  trackEvent('search', {
+    search_term:         query,
+    search_result_count: searchProducts(query).length,   // 0이면 "결과 없는 검색어" 분석에 활용
+    login_status:        currentUser ? 'logged_in' : 'logged_out',
+  });
   pendingScrollTo = 'section-all-products';
   navigate('/search/' + encodeURIComponent(query));
 }
