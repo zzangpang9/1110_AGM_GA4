@@ -2275,6 +2275,7 @@ function goToBanner(idx) {
   document.getElementById('banner-track').style.transform = `translateX(-${bannerIdx * 100}%)`;
   document.querySelectorAll('.banner-dot').forEach((d, i) => d.classList.toggle('is-active', i === bannerIdx));
   resetBannerTimer();
+  trackBannerView(bannerIdx);
 }
 
 function moveBanner(dir) {
@@ -2322,6 +2323,34 @@ function trackWishlistToggle(name, product, location_) {
     login_status:   currentUser ? 'logged_in' : 'logged_out',
   });
 }
+
+// 상단 히어로 배너(자동 슬라이드 5장) → top_banner_view / top_banner_click (banner_name, banner_position)
+// 노출: 배너 영역이 화면에 50% 이상 보이고 탭이 활성인 상태에서 해당 슬라이드가 표시될 때, 슬라이드당 페이지 로드 1회
+let heroVisible = false;
+const viewedBanners = new Set();
+function trackBannerView(idx) {
+  if (!heroVisible || document.visibilityState !== 'visible') return;
+  const slide = document.getElementById('banner-' + (idx + 1));
+  if (!slide || viewedBanners.has(slide.id)) return;
+  viewedBanners.add(slide.id);
+  trackEvent('top_banner_view', { banner_name: slide.dataset.bannerTitle, banner_position: Number(slide.dataset.bannerId) });
+}
+(function initBannerTracking() {
+  const hero = document.getElementById('hero');
+  if (hero && 'IntersectionObserver' in window) {
+    new IntersectionObserver(entries => {
+      heroVisible = entries[0].isIntersecting;
+      if (heroVisible) trackBannerView(bannerIdx);
+    }, { threshold: 0.5 }).observe(hero);
+  }
+  document.addEventListener('visibilitychange', () => trackBannerView(bannerIdx));
+  document.addEventListener('click', e => {
+    const cta = e.target.closest('.banner-cta');
+    const slide = cta && cta.closest('.banner-slide');
+    if (!slide) return;
+    trackEvent('top_banner_click', { banner_name: slide.dataset.bannerTitle, banner_position: Number(slide.dataset.bannerId) });
+  }, true);
+})();
 
 // 메인 제품 카드 → item_view / item_click (item_name, section)
 // 택소노미 section 값은 '특가'(오늘의 특가)·'베스트'(베스트 상품)만 정의됨 → 신상품·최근 본 상품 카드는 제외
