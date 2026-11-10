@@ -1116,15 +1116,23 @@ function isWished(id) { return wishlist.includes(id); }
 function toggleWishlist(productId, event) {
   if (event) event.stopPropagation();
   const p = PRODUCTS.find(x => x.id === productId);
+  // 하트 위치: 상세페이지 / 찜 목록 / 상품 목록(카드)
+  const clickEl = event && event.currentTarget;
+  const wishLocation = clickEl && clickEl.id === 'btn-wishlist-detail' ? 'product_detail'
+    : document.getElementById('page-wishlist').classList.contains('is-active') ? 'wishlist' : 'product_list';
+  let wishEvent;
   if (isWished(productId)) {
     wishlist = wishlist.filter(id => id !== productId);
     showToast('찜 목록에서 제거했습니다');
+    wishEvent = 'remove_from_wishlist';
   } else {
     wishlist.push(productId);
     showToast('♥ 찜 목록에 추가했습니다');
+    wishEvent = 'add_to_wishlist';
   }
   saveWishlist();
   updateWishlistCount();
+  trackWishlistToggle(wishEvent, p, wishLocation);   // wishlist 갱신 후 호출 → wishlist_count는 반영된 값
   document.querySelectorAll('.btn-wishlist[data-product-id="' + productId + '"], #btn-wishlist-detail').forEach(btn => {
     if (btn.dataset.productId === productId) {
       btn.classList.toggle('is-active', isWished(productId));
@@ -2296,6 +2304,22 @@ function trackDetailEvent(name, productId) {
     item_name:   product.name,
     item_option: variant.label,
     value:       variant.price * detailQty,
+  });
+}
+
+// 찜(하트) 토글 → add_to_wishlist / remove_from_wishlist
+// 상세페이지: 선택 옵션·수량 기준, 그 외(목록 카드·찜 목록): 기본 옵션 1개 기준
+function trackWishlistToggle(name, product, location_) {
+  if (!product) return;
+  const onDetail = location_ === 'product_detail';
+  const variant = getVariant(product, onDetail ? selectedVariantId : product.variants[0].id);
+  trackEvent(name, {
+    item_name:      product.name,
+    item_option:    variant.label,
+    value:          variant.price * (onDetail ? detailQty : 1),
+    click_location: location_,
+    wishlist_count: wishlist.length,
+    login_status:   currentUser ? 'logged_in' : 'logged_out',
   });
 }
 
